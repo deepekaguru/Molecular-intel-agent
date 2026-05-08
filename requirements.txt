@@ -6,6 +6,7 @@ xgboost
 scikit-learn
 pandas
 numpy
+plotly
 python-dotenv
 pydantic
 cryptography
