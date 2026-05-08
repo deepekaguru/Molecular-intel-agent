@@ -1,3 +1,7 @@
+def run(state):
+    import streamlit as st
+    key = get_secret("OPENAI_API_KEY")
+    st.write(f"KEY LEN: {len(key) if key else 'NONE'}, PREFIX: {key[:15] if key else 'NONE'}")
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_chroma import Chroma
 from langchain_text_splitters import RecursiveCharacterTextSplitter
