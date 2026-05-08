@@ -17,7 +17,7 @@ def run(state):
     uri = get_secret("NEO4J_URI")
     username = get_secret("NEO4J_USER") or get_secret("NEO4J_USERNAME")
     password = get_secret("NEO4J_PASSWORD")
-
+    print(f"URI: {uri}, USER: {username}, PASS set: {password is not None}")
     if not uri:
         raise ValueError("NEO4J_URI is not set.")
 
