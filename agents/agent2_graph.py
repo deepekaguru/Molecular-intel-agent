@@ -24,7 +24,7 @@ if not uri:
     raise ValueError("NEO4J_URI is not set. Check Streamlit secrets or .env file.")
 if not uri.startswith(("neo4j://", "neo4j+s://", "bolt://", "bolt+s://")):
     raise ValueError(f"NEO4J_URI has invalid scheme: {uri[:20]}... Must start with neo4j+s://")
-
+st.write("URI being used:", repr(uri))
 driver = GraphDatabase.driver(uri, auth=(username, password))
 
 def run(state):
