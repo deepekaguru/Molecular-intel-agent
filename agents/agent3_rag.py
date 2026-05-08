@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-llm = ChatOpenAI(model="gpt-4o-mini", api_key=os.getenv("OPENAI_API_KEY"))
+llm = ChatOpenAI(model="gpt-4o-mini", api_key=os.getsecret("OPENAI_API_KEY"))
 
 sample_literature = [
     "BRCA1 mutations are associated with increased sensitivity to PARP inhibitors such as Olaparib. Clinical trials show 72% response rate in BRCA1 mutated breast cancer patients.",
