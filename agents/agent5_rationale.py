@@ -39,44 +39,7 @@ Format your response as:
 
     # ========== LEVEL 2 CONFIRMATION: USER AUTHORIZATION REQUIRED ==========
     # Import action controller
-    from security.action_control import ActionController
-    import streamlit as st
-    
-    action_controller = ActionController()
-    
-    # Prepare detailed action information for user review
-    action_details = {
-        "purpose": "Generate clinical rationale for treatment recommendations",
-        "mutations": mutations if mutations else "None selected",
-        "top_treatments": [t.get('treatment', 'Unknown') for t in treatments] if treatments else [],
-        "evidence_sources": len(evidence) if isinstance(evidence, list) else "N/A",
-        "estimated_api_cost": "$0.01 - $0.05 per call",
-        "data_destination": "OpenAI API (external service)",
-        "model": "gpt-4o-mini",
-        "temperature": 0.3,
-        "pii_status": "Should be masked by input validator"
-    }
-    
-    # Require user confirmation before making LLM call
-    try:
-        action_controller.require_user_confirmation(
-            action_type="llm_rationale_generation",
-            details=action_details,
-            risk_level="HIGH"  # HIGH because sends patient data to external API
-        )
-    except Exception as e:
-        # If confirmation fails or user denies, log and return safe default
-        print(f"⚠️ LLM call authorization denied: {e}")
-        state['rationale'] = "Rationale generation requires user authorization. Please authorize the action to proceed."
-        
-        # Log the denial
-        action_controller.log_action(
-            action_type="llm_rationale_generation",
-            status="DENIED",
-            details={"reason": str(e)}
-        )
-        
-        return state
+
     
     # ========== END OF LEVEL 2 CONFIRMATION SECTION ==========
     
