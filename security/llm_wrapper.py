@@ -9,7 +9,6 @@ from langchain_openai import ChatOpenAI
 
 # Import security modules
 import sys
-import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from security.llm_guardrails import LLMGuardrails
 from security.data_security import DataSecurityHandler
@@ -25,16 +24,24 @@ class SecureLLMClient:
         self.data_security = DataSecurityHandler()
         self.action_controller = ActionController()
         
-        # Initialize OpenAI client
+        # Initialize OpenAI client — reads from st.secrets on Streamlit Cloud
+        api_key = self._get_api_key()
         self.client = ChatOpenAI(
             model=model,
-            api_key=os.getenv("OPENAI_API_KEY"),
+            api_key=api_key,
             temperature=temperature
         )
         
-        # Track usage
         self.call_count = 0
         self.total_tokens = 0
+
+    def _get_api_key(self):
+        """Read API key from st.secrets (Streamlit Cloud) or env var (local)"""
+        try:
+            import streamlit as st
+            return st.secrets["OPENAI_API_KEY"]
+        except Exception:
+            return os.getenv("OPENAI_API_KEY")
     
     def chat_completion(
         self, 
@@ -43,19 +50,7 @@ class SecureLLMClient:
         max_tokens: int = 2000,
         user_role: str = 'all'
     ) -> Dict[str, Any]:
-        """
-        Secure chat completion with guardrails
-        
-        Args:
-            prompt: User prompt to send to LLM
-            system_message: Optional system message (uses default medical guardrails if None)
-            max_tokens: Maximum tokens in response
-            user_role: User role for authorization
-            
-        Returns:
-            Dict with 'success', 'response', 'warnings', 'filtered'
-        """
-        
+
         # ===== GUARDRAIL 1: AUTHORIZATION =====
         if not self.action_controller.authorize_action('call_llm', user_role):
             return {
@@ -67,7 +62,7 @@ class SecureLLMClient:
         # ===== GUARDRAIL 2: INPUT VALIDATION =====
         valid_input, error_msg = self.guardrails.validate_llm_input(prompt)
         if not valid_input:
-            self.action_controller.log_action('call_llm', user_role, 'blocked', error_msg)
+            self.action_controller.log_action('call_llm', 'blocked', {'error': error_msg})
             return {
                 'success': False,
                 'error': error_msg,
@@ -77,7 +72,6 @@ class SecureLLMClient:
         # ===== GUARDRAIL 3: PII SCRUBBING =====
         masked_result = self.data_security.mask_pii(prompt)
         if masked_result['pii_detected']:
-            # Log PII detection
             self.data_security.secure_log('pii_in_llm_input', {
                 'pii_types': masked_result['pii_detected'],
                 'masked': True
@@ -91,13 +85,11 @@ class SecureLLMClient:
         
         # ===== GUARDRAIL 5: MAKE LLM CALL =====
         try:
-            # Log the call
-            self.action_controller.log_action('call_llm', user_role, 'started', {
+            self.action_controller.log_action('call_llm', 'started', {
                 'model': self.model,
                 'prompt_length': len(safe_prompt)
             })
             
-            # Invoke LLM
             messages = [
                 {"role": "system", "content": system_message},
                 {"role": "user", "content": safe_prompt}
@@ -105,12 +97,10 @@ class SecureLLMClient:
             
             response = self.client.invoke(messages)
             output_text = response.content
-            
-            # Track usage
             self.call_count += 1
             
         except Exception as e:
-            self.action_controller.log_action('call_llm', user_role, 'failed', str(e))
+            self.action_controller.log_action('call_llm', 'failed', {'error': str(e)})
             return {
                 'success': False,
                 'error': f'LLM call failed: {str(e)}',
@@ -129,7 +119,7 @@ class SecureLLMClient:
             'call_count': self.call_count
         })
         
-        self.action_controller.log_action('call_llm', user_role, 'success', {
+        self.action_controller.log_action('call_llm', 'success', {
             'output_filtered': len(warnings) > 0
         })
         
@@ -142,7 +132,6 @@ class SecureLLMClient:
         }
     
     def get_stats(self) -> Dict[str, Any]:
-        """Get usage statistics"""
         return {
             'total_calls': self.call_count,
             'model': self.model,
