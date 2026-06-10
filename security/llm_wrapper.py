@@ -9,7 +9,8 @@ from langchain_openai import ChatOpenAI
 
 # Import security modules
 import sys
-sys.path.append('/home/deepekagurunathan/molecular-intel-agent')
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from security.llm_guardrails import LLMGuardrails
 from security.data_security import DataSecurityHandler
 from security.action_control import ActionController
