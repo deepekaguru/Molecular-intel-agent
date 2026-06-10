@@ -14,6 +14,10 @@ class DataSecurityHandler:
         'ssn': r'\b\d{3}-\d{2}-\d{4}\b',
         'date_of_birth': r'\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b',
         'credit_card': r'\b\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b',
+        'name': r'\b(patient|name|mr|mrs|ms|dr)\.?\s+[A-Z][a-z]+\s+[A-Z][a-z]+\b',
+        'mrn': r'\bMRN[\s:]?\d{6,10}\b',
+        'zip_code': r'\b\d{5}(-\d{4})?\b',
+        'ip_address': r'\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b',
     }
     
     @staticmethod
@@ -48,18 +52,15 @@ class DataSecurityHandler:
         """Anonymize patient data while preserving clinical utility"""
         anonymized = patient_data.copy()
         
-        # Replace real identifiers with hashed versions
         if 'patient_name' in anonymized:
             anonymized['patient_id'] = DataSecurityHandler.hash_identifier(anonymized['patient_name'])
             del anonymized['patient_name']
         
-        # Remove direct identifiers
         pii_fields = ['name', 'address', 'phone', 'email', 'ssn']
         for field in pii_fields:
             if field in anonymized:
                 del anonymized[field]
         
-        # Generalize age into ranges
         if 'age' in anonymized:
             age = anonymized['age']
             if age < 18:
@@ -75,12 +76,11 @@ class DataSecurityHandler:
     
     @staticmethod
     def secure_log(event: str, data: Dict[str, Any], level: str = 'INFO'):
-        """Log events with PII masking"""
-        # Mask sensitive data before logging
+        """Log events with PII masking — fails silently if file not writable"""
         safe_data = {}
         for key, value in data.items():
             if key in ['patient_id', 'cancer_type', 'mutations']:
-                safe_data[key] = value  # These are OK to log
+                safe_data[key] = value
             elif isinstance(value, str):
                 masked_result = DataSecurityHandler.mask_pii(value)
                 safe_data[key] = masked_result['masked_text']
@@ -93,13 +93,15 @@ class DataSecurityHandler:
             'event': event,
             'data': safe_data
         }
-        
-        # Write to secure log file (not stdout to avoid CloudWatch exposure)
-        log_file = '/tmp/logs/secure.log'
-        os.makedirs(os.path.dirname(log_file), exist_ok=True)
-        
-        with open(log_file, 'a') as f:
-            f.write(json.dumps(log_entry) + '\n')
+
+        # Try file logging first, fall back to print (Streamlit Cloud safe)
+        try:
+            log_file = '/tmp/logs/secure.log'
+            os.makedirs(os.path.dirname(log_file), exist_ok=True)
+            with open(log_file, 'a') as f:
+                f.write(json.dumps(log_entry) + '\n')
+        except Exception:
+            print(f"SECURE_LOG | {level} | {event} | {json.dumps(safe_data)}")
     
     @staticmethod
     def load_secrets_from_env() -> Dict[str, str]:
@@ -108,7 +110,6 @@ class DataSecurityHandler:
             'NEO4J_URI',
             'NEO4J_USER',
             'NEO4J_PASSWORD',
-            'ANTHROPIC_API_KEY'
         ]
         
         secrets = {}
