@@ -24,7 +24,7 @@ jobs:
           python - <<'EOF'
           from playwright.sync_api import sync_playwright
 
-          url = "https://refundeasy.streamlit.app/"
+          url = "https://molecular-intel-agent.streamlit.app"
 
           with sync_playwright() as p:
               browser = p.chromium.launch()
